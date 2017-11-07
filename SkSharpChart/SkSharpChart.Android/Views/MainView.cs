@@ -1,23 +1,39 @@
+using System;
+using System.Collections.Generic;
 using Android.App;
 using Android.OS;
-using Android.Widget;
 using MvvmCross.Droid.Views;
 using SkiaSharp;
 using SkiaSharp.Views.Android;
+using System.Linq;
 
 namespace SkSharpChart.Droid.Views
 {
-    //структура точки на графике
-    struct Point
+    public static class ChartData
     {
-        public float X { get; set; }
-        public float Y { get; set; }
-
-        public Point(float x, float y)
+        public static SKPaint AxisBrush = new SKPaint
         {
-            X = x;
-            Y = y;
-        }
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 6,
+            Color = SKColor.FromHsv(0, 0, 75),
+        }; 
+
+        public static SKPaint MessageBrush = new SKPaint
+        {
+            IsAntialias = true,
+            Color = SKColors.White,
+            StrokeWidth = 2,
+            TextSize = 55,
+            FakeBoldText = true,
+            Typeface = SKTypeface.FromFile("Assets/HelveticaNeue.ttf")
+        };
+
+        public static SKPaint ChartBrush = new SKPaint
+        {
+            Style = SKPaintStyle.Stroke,
+            Color = SKColors.Goldenrod,
+            StrokeWidth = 10,
+        };
     }
 
     [Activity(Label = "Charts")]
@@ -29,65 +45,53 @@ namespace SkSharpChart.Droid.Views
             base.OnCreate(bundle);
             SetContentView(Resource.Layout.MainView);
             var skia = FindViewById<SKCanvasView>(Resource.Id.canvasView);
-            skia.PaintSurface += (sender, e) => //событие, использующееся для отрисовки на Canvas
+            skia.PaintSurface += (sender, e) => 
             {
-                var info = e.Info;          //разная инфа о рабочей области: ширина, высота, итд
-                var surface = e.Surface;    // доступ к рабочей плоскости
-                var canvas = surface.Canvas;//доступ к canvas'у
-                //определение начала и конца оси X
-                var xCoordStart = new Point(info.Width / 20, info.Height - (info.Height / 3));
-                var xCoordEnd = new Point(info.Width - (info.Width / 20), info.Height - (info.Height / 3));
-                //определение начала и конца оси Y
-                var yCoordStart = new Point(info.Width / 20, info.Height - (info.Height / 3));
-                var yCoordEnd = new Point(info.Width / 20, info.Height / 95);
-
-                canvas.Clear(SKColors.White);
-                //экземпляры класса SKPaint, которыми мы рисуем
-                //ось
-                var axisBrush = new SKPaint
+                var info = e.Info;         
+                var surface = e.Surface;    
+                var canvas = surface.Canvas;
+                var tf = SKTypeface.FromFile("Assets/HelveticaNeue.ttf");
+                SKPaint TextBrush = new SKPaint
                 {
-                    Style = SKPaintStyle.Stroke,
-                    StrokeWidth = 8,
-                    Color = SKColor.FromHsv(0, 0, 75),                   
-                };
-                //текст лейблов
-                var textBrush = new SKPaint
-                {
+                    IsAntialias = true,
+                    Style = SKPaintStyle.Fill,
                     Color = SKColors.SlateGray,
-                    StrokeWidth = 2,
-                    TextSize = 45f,
-                    FakeBoldText = true,                   
+                    TextSize = info.Width/24,
+                    FakeBoldText = true,
+                    Typeface = tf
                 };
-                //текст на зеленом окошечке
-                var messageBrush = new SKPaint
-                {
-                    Color = SKColors.White,
-                    StrokeWidth = 2,
-                    TextSize = 55,
-                    FakeBoldText = true
-                };
-                //линия графика
-                var chartBrush = new SKPaint
-                {
-                    Style = SKPaintStyle.Stroke,
-                    Color = SKColors.Goldenrod,
-                    StrokeWidth = 10
-                };
-                //делаем сереньким фон
-                canvas.DrawColor(SKColor.FromHsv(0, 0, 90));
-                //Внимание! Код ниже представляет собой набор из хаотически добавленных функций, в которых
-                //коэффициенты расставлены методом научного тыка, а решение до безобразия неоптимизировано.
-                //в дальнейшем числа, встречающиеся более-менее часто, будут вынесены как константы. 
-                while (i < 7) //рисуем 7 горизонтальных линий
-                    canvas.DrawLine(xCoordStart.X, xCoordStart.Y - i * 150, xCoordEnd.X, xCoordEnd.Y - i++ * 150, axisBrush);
 
-                canvas.DrawText("MARCH", xCoordStart.X, xCoordStart.Y + 80, textBrush);
-                for(int k = 0; k < 6; k++)  //рисуем лейблы по X
-                    canvas.DrawText((k + 12).ToString(), 200+ yCoordStart.X + 170 * k, yCoordStart.Y + 80, textBrush);
-                for (int k = 1; k < 7; k++) //рисуем лейблы по Y
-                    canvas.DrawText((20*k).ToString(),xCoordStart.X+20,xCoordStart.Y - k*150 + 60,textBrush);
+                var xCoordStart = new SKPoint(info.Width / 20, info.Height - info.Height / 3);
+                var xCoordEnd = new SKPoint(info.Width - info.Width / 20, info.Height - info.Height / 3);
+                var yCoordStart = new SKPoint(info.Width / 20, info.Height - info.Height / 3);
+                var yCoordEnd = new SKPoint(info.Width / 20, info.Height / 95);
+                canvas.Clear(SKColor.FromHsv(0, 0, 90));
 
-                canvas.DrawPoints(SKPointMode.Polygon,points, chartBrush);
+                var pieceWidth = info.Width / 8;
+                var sideMargin = pieceWidth / 2;
+
+                SKPoint[] points =
+                {
+                    new SKPoint(xCoordStart.X, xCoordStart.Y - pieceWidth),
+                    new SKPoint(xCoordStart.X + pieceWidth, xCoordStart.Y - pieceWidth),
+                    new SKPoint(xCoordStart.X + 2 * pieceWidth, xCoordStart.Y - 4 * pieceWidth),
+                    new SKPoint(xCoordStart.X + 3 * pieceWidth, xCoordStart.Y - 3 * pieceWidth)
+                };
+
+                for (int i = 0; i < 7; i++)
+                    canvas.DrawLine(xCoordStart.X, xCoordStart.Y - i * pieceWidth, xCoordEnd.X, xCoordEnd.Y - i * pieceWidth, ChartData.AxisBrush);
+                
+                var testSize = info.Width / 20;
+
+                var testMargin = info.Width / 5.4f;
+                // *** Labels ***
+                canvas.DrawText("MARCH", xCoordStart.X, xCoordStart.Y + sideMargin, TextBrush);
+                for(int k = 0; k < 6; k++) 
+                    canvas.DrawText((k + 12).ToString(), yCoordStart.X + pieceWidth * k, yCoordStart.Y + testSize, TextBrush);
+                for (int k = 1; k < 6; k++) 
+                    canvas.DrawText((20*k).ToString(), xCoordStart.X ,xCoordStart.Y - k * pieceWidth + TextBrush.TextSize, TextBrush);
+                //*** End labels ***
+                canvas.DrawPoints(SKPointMode.Polygon, points, ChartData.ChartBrush);
                 for (int j = 1; j < points.Length; j++)
                 {
                     canvas.DrawCircle(points[j].X, points[j].Y, 18, new SKPaint { StrokeWidth = 10, Color = SKColors.Goldenrod, Style = SKPaintStyle.Stroke });
@@ -110,11 +114,10 @@ namespace SkSharpChart.Droid.Views
                 triangle.Close();
                 
                 canvas.DrawPath(triangle,new SKPaint { Color = SKColors.Green, Style = SKPaintStyle.Fill});
-                canvas.DrawText("100 pts",rect.Location.X+150,rect.Location.Y + 80, messageBrush);
-                messageBrush.FakeBoldText = false;
-                canvas.DrawText("John Douglas", rect.Location.X + 90, rect.Location.Y + 150, messageBrush);
-                //canvas.DrawLine(yCoordStart.X, yCoordStart.Y, yCoordEnd.X, yCoordEnd.Y, axisBrush);
-
+                canvas.DrawText("100 pts",rect.Location.X+150,rect.Location.Y + 80, ChartData.MessageBrush);
+                ChartData.MessageBrush.FakeBoldText = false;
+                canvas.DrawText("John Douglas", rect.Location.X + 90, rect.Location.Y + 150, ChartData.MessageBrush);
+                //canvas.DrawLine(yCoordStart.X, yCoordStart.Y, yCoordEnd.X, yCoordEnd.Y, axisBrush);*/
             };
         }
     }
